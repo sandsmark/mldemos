@@ -5,15 +5,15 @@ Subject: hardwire plugin directory
 Set directory to scan for plugins subdirectory containing plugins to
 system directory in which the plugins subdirectory is installed.
 ---
- MLDemos/algorithmmanager.cpp | 2 +-
+ MLDemos/pluginmanager.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MLDemos/algorithmmanager.cpp b/MLDemos/algorithmmanager.cpp
-index c0d20e1..f7a9314 100644
---- a/MLDemos/algorithmmanager.cpp
-+++ b/MLDemos/algorithmmanager.cpp
-@@ -245,7 +245,7 @@ AlgorithmManager::~AlgorithmManager()
- void AlgorithmManager::LoadPlugins()
+diff --git a/MLDemos/pluginmanager.cpp b/MLDemos/pluginmanager.cpp
+index 026107f..1609aee 100644
+--- a/MLDemos/pluginmanager.cpp
++++ b/MLDemos/pluginmanager.cpp
+@@ -17,7 +17,7 @@ PluginManager::~PluginManager()
+ void PluginManager::LoadPlugins()
  {
      qDebug() << "Importing plugins";
 -    QDir pluginsDir = QDir(qApp->applicationDirPath());
