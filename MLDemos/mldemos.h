@@ -73,22 +73,22 @@ public:
     QMutex mutex;
 
     Ui::MLDemosClass ui;
-private:
-
+    Ui::statisticsDialog *showStats;
+    Ui::ManualSelection* manualSelection;
+    Ui::InputDimensions* inputDimensions;
     QDialog *displayDialog, *aboutDialog, *statsDialog, *manualSelectDialog, *inputDimensionsDialog;
+
+private:
 
     QNamedWindow *rocWidget;
 
 	Ui::viewOptionDialog *displayOptions;
 	Ui::aboutDialog *aboutPanel;
-	Ui::statisticsDialog *showStats;
 	Ui::DrawingToolbar *drawToolbar;
     Ui::DrawingToolbarContext1 *drawToolbarContext1;
 	Ui::DrawingToolbarContext2 *drawToolbarContext2;
 	Ui::DrawingToolbarContext3 *drawToolbarContext3;
 	Ui::DrawingToolbarContext4 *drawToolbarContext4;
-    Ui::ManualSelection* manualSelection;
-    Ui::InputDimensions* inputDimensions;
     QWidget *drawToolbarWidget;
 	QWidget *drawContext1Widget, *drawContext2Widget, *drawContext3Widget, *drawContext4Widget;
 	QToolBar *toolBar;
