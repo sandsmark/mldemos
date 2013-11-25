@@ -34,7 +34,7 @@ Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <matio/matio.h>
 #include "optimization_test_functions.h"
 
-MLDemos::MLDemos(QString filename, QWidget *parent, Qt::WFlags flags)
+MLDemos::MLDemos(QString filename, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags),
       canvas(0),glw(0),vis(0),
       gridSearch(0),
@@ -47,6 +47,12 @@ MLDemos::MLDemos(QString filename, QWidget *parent, Qt::WFlags flags)
     QApplication::setWindowIcon(QIcon(":/MLDemos/logo.png"));
     ui.setupUi(this);
     setAcceptDrops(true);
+
+#ifdef QT_OPENGL_ES_2
+    qDebug() << "OpenGL ES 2";
+#else
+    qDebug() << "OpenGL 2.1";
+#endif
 
     connect(ui.actionExit, SIGNAL(triggered()), qApp, SLOT(quit()));
     connect(ui.actionAbout, SIGNAL(triggered()), this, SLOT(ShowAbout()));
@@ -2204,7 +2210,7 @@ void MLDemos::Save(QString filename)
     }
     file.close();
     if (!canvas->maps.reward.isNull()) RewardFromMap(canvas->maps.reward.toImage());
-    canvas->data->Save(filename.toAscii());
+    canvas->data->Save(filename.toLatin1());
     SaveParams(filename);
     ui.statusBar->showMessage("Data saved successfully");
 }
@@ -2227,7 +2233,7 @@ void MLDemos::Load(QString filename)
     }
     file.close();
     ClearData();
-    canvas->data->Load(filename.toAscii());
+    canvas->data->Load(filename.toLatin1());
     MapFromReward();
     LoadParams(filename);
     //    QImage reward(filename + "-reward.png");
@@ -2291,7 +2297,7 @@ void MLDemos::dropEvent(QDropEvent *event)
         if (filename.toLower().endsWith(".ml"))
         {
             ClearData();
-            canvas->data->Load(filename.toAscii());
+            canvas->data->Load(filename.toLatin1());
             MapFromReward();
             LoadParams(filename);
             ui.statusBar->showMessage("Data loaded successfully");
@@ -2344,6 +2350,10 @@ void MLDemos::Screenshot()
         if (!img.save(filename)) ui.statusBar->showMessage("WARNING: Unable to save image");
         else ui.statusBar->showMessage("Image saved successfully");
     }
+    else if(canvas->canvasType == 2) {
+        if (!vis->SaveScreenshot(filename)) ui.statusBar->showMessage("WARNING: Unable to save image");
+        else ui.statusBar->showMessage("Image saved successfully");
+    }
     else
     {
         if (!canvas->SaveScreenshot(filename)) ui.statusBar->showMessage("WARNING: Unable to save image");
@@ -2358,6 +2368,10 @@ void MLDemos::ToClipboard()
         QImage img = glw->grabFrameBuffer();
         clipboard->setImage(img);
         clipboard->setPixmap(QPixmap::fromImage(img));
+    } else if (canvas->canvasType == 2) {
+        QPixmap pixmap = vis->GetDisplayPixmap();
+        clipboard->setPixmap(pixmap);
+        clipboard->setImage(pixmap.toImage());
     } else {
         QPixmap screenshot = canvas->GetScreenshot();
         if (screenshot.isNull()) {

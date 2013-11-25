@@ -10,15 +10,18 @@ PluginManager::~PluginManager()
 {
     FOR (i, inputoutputs.size()) {
         if (inputoutputs[i] && bInputRunning[i]) inputoutputs[i]->Stop();
+        DEL(inputoutputs[i]);
     }
-    FOR (i, pluginLoaders.size()) pluginLoaders.at(i)->unload();
+    FOR (i, pluginLoaders.size()) {
+        pluginLoaders.at(i)->unload();
+        DEL(pluginLoaders[i]);
+    }
 }
 
 void PluginManager::LoadPlugins()
 {
     qDebug() << "Importing plugins";
     QDir pluginsDir = QDir(qApp->applicationDirPath());
-    QStringList pluginFileNames;
     QDir alternativeDir = pluginsDir;
 
 #if defined(Q_OS_WIN)
@@ -249,7 +252,7 @@ void PluginManager::AddPlugin(ProjectorInterface *iProject, const char *method)
 
 void PluginManager::ActivateIO()
 {
-    QList<QAction *> pluginActions = menuInput_Output->actions();
+    QList<QAction *> pluginActions = mldemos->ui.menuInput_Output->actions();
     FOR (i, inputoutputs.size())
     {
         if (i<pluginActions.size() && inputoutputs[i] && pluginActions[i])
@@ -270,7 +273,7 @@ void PluginManager::ActivateIO()
 
 void PluginManager::ActivateImport()
 {
-    QList<QAction *> pluginActions = menuInput_Output->actions();
+    QList<QAction *> pluginActions = mldemos->ui.menuInput_Output->actions();
     FOR (i, inputoutputs.size()) {
         if (i<pluginActions.size() && inputoutputs[i] && pluginActions[i]) {
             if (pluginActions[i]->isChecked()) {
@@ -299,13 +302,13 @@ void PluginManager::DisactivateIO(QObject *io)
         qDebug() << "Unable to unload plugin: ";
         return; // something weird is going on!
     }
-    QList<QAction *> pluginActions = menuInput_Output->actions();
+    QList<QAction *> pluginActions = mldemos->ui.menuInput_Output->actions();
     if (pluginIndex < pluginActions.size() && pluginActions[pluginIndex]) {
         pluginActions[pluginIndex]->setChecked(false);
         if (bInputRunning[pluginIndex]) inputoutputs[pluginIndex]->Stop();
         bInputRunning[pluginIndex] = false;
     }
-    pluginActions = menuImport->actions();
+    pluginActions = mldemos->ui.menuImport->actions();
     if (pluginIndex < pluginActions.size() && pluginActions[pluginIndex]) {
         pluginActions[pluginIndex]->setChecked(false);
         if (bInputRunning[pluginIndex]) inputoutputs[pluginIndex]->Stop();
