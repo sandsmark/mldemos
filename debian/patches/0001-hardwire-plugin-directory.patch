@@ -9,15 +9,15 @@ system directory in which the plugins subdirectory is installed.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/MLDemos/pluginmanager.cpp b/MLDemos/pluginmanager.cpp
-index 026107f..1609aee 100644
+index 778d6a8..d955eca 100644
 --- a/MLDemos/pluginmanager.cpp
 +++ b/MLDemos/pluginmanager.cpp
-@@ -17,7 +17,7 @@ PluginManager::~PluginManager()
+@@ -21,7 +21,7 @@ PluginManager::~PluginManager()
  void PluginManager::LoadPlugins()
  {
      qDebug() << "Importing plugins";
 -    QDir pluginsDir = QDir(qApp->applicationDirPath());
 +    QDir pluginsDir = QDir("/usr/lib/mldemos");
-     QStringList pluginFileNames;
      QDir alternativeDir = pluginsDir;
  
+ #if defined(Q_OS_WIN)
