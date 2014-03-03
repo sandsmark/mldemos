@@ -773,6 +773,8 @@ void AlgorithmManager::Train(Regressor *regressor, int outputDim, float trainRat
         outputIndexInList = i;
         break;
     }
+    if(outputIndexInList == -1) inputDims.push_back(outputDim);
+    outputIndexInList = inputDims.size()-1;
     sourceDims = inputDims;
 
     if(!samples.size()) samples = canvas->data->GetSampleDims(inputDims, outputIndexInList == -1 ? outputDim : -1);
@@ -843,7 +845,6 @@ void AlgorithmManager::Train(Regressor *regressor, int outputDim, float trainRat
             }
         }
         regressor->Train(trainSamples, trainLabels);
-
         FOR(i, trainCnt)
         {
             fvec sample = trainSamples[i];
@@ -946,16 +947,19 @@ void AlgorithmManager::Train(Clusterer *clusterer, float trainRatio, bvec trainL
         fvec result = clusterer->Test(samples[i]);
         if(clusterer->NbClusters()==1) scores[i] = result;
         else if(result.size()>1) scores[i] = result;
+        else scores[i] = fvec(nbClusters,0);
     }
 
     FOR(i, labels.size())
     {
-        labelScores[labels[i]] += 1.f;
-        if(!classScores.count(labels[i]))classScores[labels[i]].resize(nbClusters);
+        int label = labels[i];
+        labelScores[label] += 1.f;
+        if(!classScores.count(label)) classScores[label].resize(nbClusters);
         FOR(k, nbClusters)
         {
-            classScores[labels[i]][k] += scores[i][k];
-            clusterScores[k] += scores[i][k];
+            float score = k < scores[i].size() ? scores[i][k] : 0;
+            classScores[label][k] += score;
+            clusterScores[k] += score;
         }
     }
 
@@ -1385,6 +1389,17 @@ void AlgorithmManager::Compare()
                         fmeasureTrain.push_back(res[0]);
                         precisionTrain.push_back(res[1]);
                         recallTrain.push_back(res[2]);
+                        int errors = 0;
+                        std::vector<f32pair> rocdata = classifier->rocdata[0];
+                        FOR(j, rocdata.size())
+                        {
+                            if(rocdata[j].first != rocdata[j].second)
+                            {
+                                if(classes.size() > 2) errors++;
+                                else if((rocdata[j].first < 0) != rocdata[j].second) errors++;
+                            }
+                        }
+                        errorTrain.push_back(errors/(float)rocdata.size());
                     }
                     else
                     {
@@ -1862,9 +1877,9 @@ void AlgorithmManager::Regression()
             painter.setPen(QPen(color, 1));
             painter.drawLine(point, point2);
         }
+        canvas->repaint();
     }
     emit UpdateInfo();
-
 }
 
 void AlgorithmManager::Dynamize()
