@@ -27,6 +27,7 @@ Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <QMimeData>
 #include <QUrl>
 #include <QClipboard>
+#include <QMessageBox>
 
 using namespace std;
 
@@ -97,27 +98,34 @@ void PCAProjector::timerEvent(QTimerEvent *event)
 
 void PCAProjector::DrawEigen()
 {
-	EigenFaces eig;
-	eig.Learn(sm.GetSamples(), sm.GetLabels());
-	SampleManager eigVecs;
-	eigVecs.AddSamples(eig.GetEigenVectorsImages());
-	IplImage *image = eigVecs.GetSampleImage();
-    if(!eigenVectorLabel) eigenVectorLabel = new QLabel();
-    eigenVectorLabel->setScaledContents(true);
-    eigenVectorLabel->setPixmap(QNamedWindow::toPixmap(image));
-    eigenVectorLabel->show();
+    if(sm.GetCount() >= 3){
+        EigenFaces eig;
+        eig.Learn(sm.GetSamples(), sm.GetLabels());
+        SampleManager eigVecs;
+        eigVecs.AddSamples(eig.GetEigenVectorsImages());
+        IplImage *image = eigVecs.GetSampleImage();
+        if(!eigenVectorLabel) eigenVectorLabel = new QLabel();
+        eigenVectorLabel->setScaledContents(true);
+        eigenVectorLabel->setPixmap(QNamedWindow::toPixmap(image));
+        eigenVectorLabel->show();
 
-    IplImage *eigValsImg = eig.DrawEigenVals();
-    if(!eigenValueLabel) eigenValueLabel = new QLabel();
-    eigenValueLabel->setScaledContents(true);
-    eigenValueLabel->setPixmap(QNamedWindow::toPixmap(eigValsImg));
-    eigenValueLabel->show();
+        IplImage *eigValsImg = eig.DrawEigenVals();
+        if(!eigenValueLabel) eigenValueLabel = new QLabel();
+        eigenValueLabel->setScaledContents(true);
+        eigenValueLabel->setPixmap(QNamedWindow::toPixmap(eigValsImg));
+        eigenValueLabel->show();
 
-    //cvNamedWindow("Eigen Vectors");
-    //cvShowImage("Eigen Vectors", image);
-	eigVecs.Clear();
-    IMKILL(image);
-    IMKILL(eigValsImg);
+        //cvNamedWindow("Eigen Vectors");
+        //cvShowImage("Eigen Vectors", image);
+        eigVecs.Clear();
+        IMKILL(image);
+        IMKILL(eigValsImg);
+    }else{
+        QMessageBox msgBox;
+        msgBox.setText("Load/Import data first! (at least 3 samples)");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.exec();
+    }
 }
 
 pair<vector<fvec>,ivec> PCAProjector::GetData()
@@ -172,9 +180,11 @@ pair<vector<fvec>,ivec> PCAProjector::GetData()
     return data;
 }
 
+
+
 void PCAProjector::FromWebcam()
 {
-	bFromWebcam = true;
+    bFromWebcam = true;
 }
 
 void PCAProjector::SetImage( IplImage *img )
@@ -198,8 +208,8 @@ void PCAProjector::SetImage( IplImage *img )
 		image = cvCreateImage(cvSize(size,size), 8, 3);
 		cvSet(image, CV_RGB(255,255,255));
 		CvRect rect = cvRect((size-img->width)/2,(size-img->height)/2, img->width, img->height);
-		ROI(image, rect);
-		cvResize(img, image, CV_INTER_CUBIC);
+        ROI(image, rect);
+        cvResize(img, image, CV_INTER_CUBIC); //(bug when fromClipBoard)
 		unROI(image);
 	}
 	cvResize(image, display, CV_INTER_CUBIC);
@@ -214,6 +224,7 @@ void PCAProjector::RefreshDataset()
 	IplImage *dataset = sm.GetSampleImage();
 	if(!dataset)
 	{
+        options->samplesLabel->setText(QString("Samples: %1").arg(sm.GetCount()));
 		cvSet(samples, CV_RGB(255,255,255));
 		samplesWindow->ShowImage(samples);
 		samplesWindow->repaint();
@@ -405,35 +416,75 @@ void PCAProjector::LoadImage()
 
 void PCAProjector::FromClipboard()
 {
-	QClipboard *clipboard = QApplication::clipboard();
-	if(!clipboard->image().isNull()) 
-	{
-		IplImage *img = QNamedWindow::toImage(clipboard->image());
-		IMKILL(img);
-	}
-	else if(!clipboard->pixmap().isNull())
-	{
-		IplImage *img = QNamedWindow::toImage(clipboard->pixmap().toImage());
-		IMKILL(img);
-	}
-	else if(clipboard->mimeData()->hasUrls())
-	{
-		QList<QUrl> urls = clipboard->mimeData()->urls();
-		FOR(i, clipboard->mimeData()->urls().length())
-		{
-			QString filename = clipboard->mimeData()->urls()[i].toLocalFile();
-			if(filename.toLower().endsWith(".png") || filename.toLower().endsWith(".jpg"))
-			{
-                IplImage *img = cvLoadImage(filename.toLatin1());
-				if(!img) break;
-				QMutexLocker lock(&imageMutex);
-				SetImage(img);
-				bFromWebcam = false;
-				IMKILL(img);
-				break;
-			}
-		}
-	}
+    QClipboard *clipboard = QApplication::clipboard();
+    if(clipboard != NULL){
+
+        const QMimeData *mimeData = clipboard->mimeData();
+
+          if (mimeData->hasImage()) {
+
+              QImage image = clipboard->image();
+              IplImage *img = QNamedWindow::cvxCopyQImage(image);
+
+              if(img != NULL){
+                  QMutexLocker lock(&imageMutex);
+                  SetImage(img);
+                  bFromWebcam = false;
+                  IMKILL(img);
+              }
+          } else if (mimeData->hasUrls()) {
+              FOR(i, clipboard->mimeData()->urls().length())
+              {
+                  QString filename = clipboard->mimeData()->urls()[i].toLocalFile();
+                  if(filename.toLower().endsWith(".png") || filename.toLower().endsWith(".jpg"))
+                  {
+                      IplImage *img = cvLoadImage(filename.toLatin1());
+                      if(!img) break;
+                      QMutexLocker lock(&imageMutex);
+                      SetImage(img);
+                      bFromWebcam = false;
+                      IMKILL(img);
+                      break;
+                  }
+              }
+          }else {
+                std::cout<< "invalid data type" << std::endl;
+          }
+
+      /*
+       * Old structure (08.05.2014)
+       *
+       *  if(!clipboard->image().isNull())
+        {
+            IplImage *img = QNamedWindow::toImage(clipboard->image());
+            IMKILL(img);
+        }
+        else if(!clipboard->pixmap().isNull())
+        {
+            IplImage *img = QNamedWindow::toImage(clipboard->pixmap().toImage());
+            IMKILL(img);
+        }
+        else if(clipboard->mimeData()->hasUrls())
+        {
+            QList<QUrl> urls = clipboard->mimeData()->urls();
+            FOR(i, clipboard->mimeData()->urls().length())
+            {
+                QString filename = clipboard->mimeData()->urls()[i].toLocalFile();
+                if(filename.toLower().endsWith(".png") || filename.toLower().endsWith(".jpg"))
+                {
+                    IplImage *img = cvLoadImage(filename.toLatin1());
+                    if(!img) break;
+                    QMutexLocker lock(&imageMutex);
+                    SetImage(img);
+                    bFromWebcam = false;
+                    IMKILL(img);
+                    break;
+                }
+            }
+        }*/
+    }else{
+        std::cout<< "clipboard is NULL" << std::endl;
+    }
 }
 
 void PCAProjector::AddImage()

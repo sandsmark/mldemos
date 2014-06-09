@@ -28,6 +28,7 @@ Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <QFileDialog>
 #include <QProgressDialog>
 #include <qcontour.h>
+#include <assert.h>
 #include "mldemos.h"
 
 using namespace std;
@@ -60,7 +61,7 @@ AlgorithmManager::AlgorithmManager(MLDemos *mldemos, Canvas *canvas, GLWidget *g
     optionsReinforcement = new Ui::optionsReinforcementWidget();
     optionsProject = new Ui::optionsProjectWidget();
 
-    algorithmWidget = new QWidget();
+    algorithmWidget = new BaseWidget();
     options->setupUi(algorithmWidget);
 
     classifyWidget = new QWidget(options->tabClass);
@@ -78,10 +79,13 @@ AlgorithmManager::AlgorithmManager(MLDemos *mldemos, Canvas *canvas, GLWidget *g
     optionsReinforcement->setupUi(reinforcementWidget);
     optionsProject->setupUi(projectWidget);
 
+    connect(gridSearch,SIGNAL(closed()),mldemos,SLOT(ResetGridSearchButton()));
+    connect(algorithmWidget,SIGNAL(closed()),mldemos,SLOT(RestAlgorithmOptionsButton()));
     connect(optionsClassify->classifyButton, SIGNAL(clicked()), this, SLOT(Classify()));
     connect(optionsClassify->loadButton, SIGNAL(clicked()), this, SLOT(LoadClassifier()));
     connect(optionsClassify->saveButton, SIGNAL(clicked()), this, SLOT(SaveClassifier()));
     connect(optionsClassify->compareButton, SIGNAL(clicked()), this, SLOT(CompareAdd()));
+    connect(compare->paramsWidget,SIGNAL(closed()),mldemos,SLOT(HideOptionCompare()));
     connect(optionsClassify->clearButton, SIGNAL(clicked()), mldemos, SLOT(Clear()));
     connect(optionsClassify->rocButton, SIGNAL(clicked()), mldemos, SLOT(ShowRoc()));
     connect(optionsClassify->manualTrainButton, SIGNAL(clicked()), mldemos, SLOT(ManualSelection()));
@@ -198,7 +202,7 @@ AlgorithmManager::AlgorithmManager(MLDemos *mldemos, Canvas *canvas, GLWidget *g
     connect(options->tabWidget, SIGNAL(currentChanged(int)), mldemos, SLOT(AlgoChanged()));
 
     algorithmWidget->setWindowFlags(Qt::Tool); // disappears when unfocused on the mac
-    algorithmWidget->setFixedSize(636,220);
+    algorithmWidget->setFixedSize(800,430);
 
     drawTimer->classifier = &classifier;
     drawTimer->regressor = &regressor;
@@ -350,7 +354,6 @@ void AlgorithmManager::QueryProjector(std::vector<fvec> samples)
     }
     emit SendResults(results);
 }
-
 
 bool AlgorithmManager::Train(Classifier *classifier, float trainRatio, bvec trainList, int positiveIndex, std::vector<fvec> samples, ivec labels)
 {
@@ -766,6 +769,15 @@ void AlgorithmManager::Train(Regressor *regressor, int outputDim, float trainRat
     if(!regressor || !canvas->data->GetCount()) return;
 
     ivec inputDims = GetInputDimensions();
+    // Bug Regression crashing --- Guillaume
+    if(inputDims.size() == 0){
+        unsigned int nbDim = canvas->data->GetDimCount();
+        inputDims.resize(nbDim);
+        FOR(i,nbDim){
+           inputDims[i]=i;
+        }
+    }
+
     int outputIndexInList = -1;
     if(inputDims.size()==1 && inputDims[0] == outputDim) return; // we dont have enough dimensions for training
     FOR(i, inputDims.size()) if(outputDim == inputDims[i])
@@ -2352,7 +2364,7 @@ void AlgorithmManager::ClusterOptimize()
     int ratioIndex = optionsCluster->trainTestCombo->currentIndex();
     float trainRatio = ratios[ratioIndex];
 
-    vector<bool> trainList;
+    vector<bool> trainList; // oh
     if(optionsCluster->manualTrainButton->isChecked())
     {
         // we get the list of samples that are checked
@@ -2391,6 +2403,7 @@ void AlgorithmManager::ClusterOptimize()
             clusterMetrics[1] = BIC;
             clusterMetrics[2] = AIC;
             clusterMetrics[3] = ClusterFMeasure(samples, labels, clusterScores, ratio);
+
             FOR(i, clusterMetrics.size())
             {
                 resultList[i][j].push_back(clusterMetrics[i]);
@@ -2398,14 +2411,14 @@ void AlgorithmManager::ClusterOptimize()
         }
         kCounts.push_back(k);
     }
-
     vector<fvec> results(4);
+    double value = 0;
     FOR(i, resultList.size())
     {
         results[i].resize(resultList[i][0].size());
         FOR(k, resultList[i][0].size())
         {
-            double value = 0;
+            value = 0;
             FOR(j, crossValCount)
             {
                 value += resultList[i][j][k];
@@ -2451,6 +2464,8 @@ void AlgorithmManager::ClusterOptimize()
     }
 
     vector< pair<float,int> > bests(results.size());
+
+    qreal xpos, ypos;
     FOR(i, results.size())
     {
         QPointF old;
@@ -2464,8 +2479,12 @@ void AlgorithmManager::ClusterOptimize()
             }
             float x = k/(float)(kCounts.size()-1);
             float y = (results[i][k] - mins[i])/(maxes[i]-mins[i]);
+            if(std::isnan(y)){y=0;}
+
             //if(i == 3) y = 1.f - y; // fmeasures needs to be maximized
-            QPointF point(x*(w-2*pad)+pad, (1.f-y)*(h-2*pad));
+
+
+            QPointF point(x*(w-2*pad)+pad,(1.f-y)*(h-2*pad));
             if(k) painter.drawLine(old, point);
             old = point;
         }
@@ -2814,6 +2833,7 @@ void AlgorithmManager::ReinforceContinue()
 
 void AlgorithmManager::Project()
 {
+    std::cout<< "AlgorithmManager::Project()" << std::endl;
     if(!canvas || !canvas->data->GetCount()) return;
     QMutexLocker lock(mutex);
     drawTimer->Stop();
@@ -2834,6 +2854,7 @@ void AlgorithmManager::Project()
     if(tab >= projectors.size() || !projectors[tab]) return;
     projector = projectors[tab]->GetProjector();
     projectors[tab]->SetParams(projector);
+
     tabUsedForTraining = tab;
     bool bHasSource = false;
     if(sourceData.size() && sourceData.size() == canvas->data->GetCount())
@@ -3315,8 +3336,11 @@ void AlgorithmManager::ClusterChanged()
 {
     if (optionsCluster->optimizeCombo->currentIndex() == 3) { // F1
         optionsCluster->trainRatioCombo->setVisible(true);
+        optionsCluster->trainRatioF1->setVisible(true);
     } else {
         optionsCluster->trainRatioCombo->setVisible(false);
+        optionsCluster->trainRatioF1->setVisible(false);
+
     }
 }
 
@@ -3380,7 +3404,9 @@ void AlgorithmManager::SetAlgorithmWidget()
     if (options->tabClust->isVisible()) {
         int index = optionsCluster->algoList->currentIndex();
         FOR (i, algoWidgets["clusterers"].size()) {
-            if (i==index) algoWidgets["clusterers"][i]->show();
+            if (i==index){
+                algoWidgets["clusterers"][i]->show();
+            }
             else algoWidgets["clusterers"][i]->hide();
         }
         if (index != -1 && index < clusterers.size()) gridSearch->SetClusterer(clusterers[index]);
@@ -3403,8 +3429,23 @@ void AlgorithmManager::SetAlgorithmWidget()
     }
     if (options->tabProj->isVisible()) {
         int index = optionsProject->algoList->currentIndex();
+        QWidget *projection_widget=NULL;
+        QCheckBox* qCheckBox=NULL;
         FOR (i, algoWidgets["projectors"].size()) {
-            if (i==index) algoWidgets["projectors"][i]->show();
+            if (i==index){
+                projection_widget = algoWidgets["projectors"][i];
+                projection_widget->show();
+                qCheckBox = projection_widget->findChild<QCheckBox*>("useRangeCheck");
+                if(qCheckBox != NULL){
+                    QSpinBox* startRangeSpin = projection_widget->findChild<QSpinBox*>("startRangeSpin");
+                    QSpinBox* stopRangeSpin = projection_widget->findChild<QSpinBox*>("stopRangeSpin");
+                    assert(startRangeSpin != NULL);
+                    assert(stopRangeSpin != NULL);
+                    unsigned int dim = canvas->data->GetDimCount();
+                    startRangeSpin->setMaximum(dim);
+                    stopRangeSpin->setMaximum(dim);
+                }
+            }
             else algoWidgets["projectors"][i]->hide();
         }
         if (index != -1 && index < projectors.size()) gridSearch->SetProjector(projectors[index]);
