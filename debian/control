@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 9),
 	       libopencv-dev,
 	       libboost-dev,
 	       qtbase5-dev, qttools5-dev, libqt5opengl5-dev
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Homepage: http://mldemos.epfl.ch
 Vcs-Git: git://git.debian.org/git/collab-maint/mldemos.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/mldemos.git;a=summary
