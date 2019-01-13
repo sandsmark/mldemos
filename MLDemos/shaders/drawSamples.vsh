@@ -1,5 +1,4 @@
-#version 120
-#extension GL_EXT_gpu_shader4 : require
+#version 130
 
 // the data we get from the scene
 attribute vec4 vertex;
@@ -9,7 +8,7 @@ attribute vec4 color;
 uniform mat4 matrix;
 
 // the stuff we want to pass to the fragment shader
-flat varying vec4 c;
+varying vec4 c;
 
 void main(void)
 {

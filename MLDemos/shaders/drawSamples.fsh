@@ -1,9 +1,8 @@
-#version 120
-#extension GL_EXT_gpu_shader4 : require
+#version 130
 
 uniform sampler2D color_texture;
 
-flat varying vec4 c;
+varying vec4 c;
 
 void main()
 {

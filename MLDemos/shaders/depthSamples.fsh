@@ -1,5 +1,4 @@
-#version 120
-#extension GL_EXT_gpu_shader4 : require
+#version 130
 
 const float Near = 1.0;
 const float Far = 60.0;
@@ -7,7 +6,7 @@ const float Depth = 1.0 / (Far - Near);
 
 uniform sampler2D color_texture;
 
-flat varying vec4 lvec;
+varying vec4 lvec;
 
 vec4 pack (float depth)
 {
