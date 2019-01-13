@@ -74,7 +74,8 @@ win32{
 }else:macx{
     CONFIG += opencv3
 }else{
-    CONFIG += opencv$$system(pkg-config --modversion opencv | cut -d . -f'1,2' | sed -e \'s/\.[2-9]/2/g\' -e \'s/\.1/1/g\')
+#    CONFIG += opencv$$system(pkg-config --modversion opencv4 | cut -d . -f'1,2' | sed -e \'s/\.[2-9]/2/g\' -e \'s/\.1/1/g\')
+    CONFIG += opencv4
 }
 
 # Boost
@@ -176,6 +177,22 @@ macx{
         DEFINES += OPENCV21
         #message("Using opencv21")
         LIBS += $$system(pkg-config --libs opencv)
+    }
+    CONFIG(opencv4){
+        PKGCONFIG += opencv4
+        DEFINES += OPENCV3
+        #message("Using opencv22 or later")
+#        LIBS += $$system(pkg-config --libs opencv4)
+        LIBS += \
+            -lopencv_bgsegm \
+            -lopencv_calib3d \
+            -lopencv_highgui \
+            -lopencv_imgcodecs \
+            -lopencv_imgproc \
+            -lopencv_videoio \
+            -lopencv_objdetect \
+            -lopencv_ml \
+            -lopencv_core
     }
 }
 

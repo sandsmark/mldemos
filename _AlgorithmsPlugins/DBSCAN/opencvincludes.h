@@ -10,6 +10,7 @@
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/ml/ml.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
 
 #include <QImage>
 

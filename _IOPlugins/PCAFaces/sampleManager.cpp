@@ -522,30 +522,30 @@ void SampleManager::Save(const char *filename)
 
 bool SampleManager::Load(const char *filename, CvSize resolution)
 {
-	IplImage *image = cvLoadImage(filename);
-	if(!image || image->width < resolution.width || image->height < resolution.height) return false;
+    IplImage image = cv::imread(filename, cv::IMREAD_COLOR);
+    if(image.width < resolution.width || image.height < resolution.height) return false;
 
 	Clear();
 
 	// we try to get the resolution off the image itself
-	int last = (image->height-1)*image->widthStep + (image->width-1)*3;
-	if(image->imageData[last] == -1) // we have the information!
+    int last = (image.height-1)*image.widthStep + (image.width-1)*3;
+    if(image.imageData[last] == -1) // we have the information!
 	{
-		size.width = image->imageData[last-2];
-		size.height = image->imageData[last-1];
+        size.width = image.imageData[last-2];
+        size.height = image.imageData[last-1];
 	}
 	else size = resolution;
 
-	int gridW = image->width / size.width;
-	int gridH = image->height / size.height;
+    int gridW = image.width / size.width;
+    int gridH = image.height / size.height;
 	int cnt = gridW*gridH;
 	bool bDone = false;
 	FOR(i, cnt)
 	{
 		IplImage *sample = cvCreateImage(size, 8, 3);
-		ROI(image, cvRect((i%gridW) * size.width, (i/gridW) * size.height, size.width, size.height));
-		cvCopy(image, sample);
-		unROI(image);
+        ROI(&image, cvRect((i%gridW) * size.width, (i/gridW) * size.height, size.width, size.height));
+        cvCopy(&image, sample);
+        unROI(&image);
 
 		if(bDone)
 		{
